@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#00e5ff">
 <title>NOVA — AI Smart Assistant</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
@@ -106,6 +106,677 @@ body {
 }
 .setup-field input:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,229,255,0.1); }
 .setup-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: left; line-height: 1.5; }
+.setup-hint a { color: var(--cyan); }
+.start-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,119,182,0.2));
+  border: 1px solid var(--cyan); border-radius: 12px;
+  color: var(--cyan); font-family: 'Orbitron', monospace;
+  font-size: 13px; letter-spacing: 3px; cursor: pointer;
+  margin-top: 10px; transition: all 0.3s;
+}
+.start-btn:hover { background: rgba(0,229,255,0.25); box-shadow: 0 0 20px rgba(0,229,255,0.2); }
+.skip-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 12px; cursor: pointer; margin-top: 16px;
+  text-decoration: underline; font-family: 'Exo 2', sans-serif;
+}
+
+/* ── MAIN APP ── */
+#app {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  height: 100%; max-width: 520px;
+  margin: 0 auto; width: 100%;
+  padding: 0 14px 14px;
+}
+
+/* Header */
+header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 10px;
+  border-bottom: 1px solid rgba(0,229,255,0.08);
+  flex-shrink: 0;
+}
+.logo { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 900; color: var(--cyan); text-shadow: 0 0 15px rgba(0,229,255,0.5); letter-spacing: 4px; }
+.logo small { font-size: 8px; color: var(--muted); display: block; letter-spacing: 5px; font-weight: 400; margin-top: 2px; }
+.status-bar { display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: all 0.3s; flex-shrink: 0; }
+.status-dot.listening { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pdot 1s ease infinite; }
+.status-dot.thinking { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pdot 0.4s ease infinite; }
+.status-dot.speaking { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: pdot 0.7s ease infinite; }
+@keyframes pdot { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.5);opacity:0.5;} }
+#statusTxt { font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 2px; color: var(--muted); }
+.settings-btn { background: none; border: 1px solid rgba(0,229,255,0.15); border-radius: 6px; padding: 5px 8px; color: var(--muted); cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.settings-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* Orb */
+.orb-section { display: flex; flex-direction: column; align-items: center; padding: 12px 0 8px; flex-shrink: 0; }
+.orb-wrap { position: relative; width: 130px; height: 130px; cursor: pointer; }
+.ring { position: absolute; border-radius: 50%; border: 1px solid rgba(0,229,255,0.12); }
+.ring:nth-child(1) { inset: -18px; animation: spin 14s linear infinite; }
+.ring:nth-child(2) { inset: -9px; animation: spin 9s linear infinite reverse; border-color: rgba(0,119,182,0.25); }
+.ring::after { content: ''; position: absolute; width: 5px; height: 5px; background: var(--cyan); border-radius: 50%; top: -2.5px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 6px var(--cyan); }
+@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.orb {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(0,229,255,0.25), rgba(0,50,100,0.3) 50%, rgba(2,8,16,0.9));
+  border: 1.5px solid rgba(0,229,255,0.35);
+  box-shadow: 0 0 25px rgba(0,229,255,0.15), inset 0 0 20px rgba(0,229,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.4s ease; overflow: hidden;
+}
+.orb.listening { border-color: rgba(57,255,20,0.6); box-shadow: 0 0 50px rgba(57,255,20,0.25), inset 0 0 20px rgba(57,255,20,0.05); }
+.orb.thinking { border-color: rgba(255,214,10,0.5); box-shadow: 0 0 40px rgba(255,214,10,0.2); animation: throb 0.6s ease infinite alternate; }
+.orb.speaking { border-color: rgba(0,229,255,0.7); box-shadow: 0 0 50px rgba(0,229,255,0.35), inset 0 0 25px rgba(0,229,255,0.08); animation: throb 0.45s ease infinite alternate; }
+@keyframes throb { from{transform:scale(1)} to{transform:scale(1.04)} }
+.orb-emoji { font-size: 38px; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); transition: all 0.3s; }
+
+/* Waveform */
+.wave { display: none; align-items: center; gap: 3px; height: 44px; }
+.wave.on { display: flex; }
+.wb { width: 3px; border-radius: 2px; background: var(--green); box-shadow: 0 0 4px var(--green); animation: wa 0.5s ease infinite alternate; }
+.wb:nth-child(1){animation-delay:0s} .wb:nth-child(2){animation-delay:.07s} .wb:nth-child(3){animation-delay:.14s}
+.wb:nth-child(4){animation-delay:.21s} .wb:nth-child(5){animation-delay:.28s} .wb:nth-child(6){animation-delay:.21s}
+.wb:nth-child(7){animation-delay:.14s} .wb:nth-child(8){animation-delay:.07s}
+@keyframes wa { from{height:4px} to{height:36px} }
+
+/* Live transcript */
+.live-transcript {
+  font-size: 11px; color: var(--muted); font-style: italic;
+  text-align: center; min-height: 18px; margin-top: 4px;
+  padding: 0 20px; letter-spacing: 0.5px;
+}
+
+/* Chat */
+.chat { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 10px; }
+.chat::-webkit-scrollbar { width: 2px; }
+.chat::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.15); border-radius: 2px; }
+
+.msg { display: flex; flex-direction: column; animation: msgIn 0.25s ease-out; }
+@keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.msg.user { align-items: flex-end; }
+.msg.nova { align-items: flex-start; }
+.msg-label { font-size: 8px; font-family: 'Orbitron', monospace; letter-spacing: 2px; margin-bottom: 4px; color: var(--muted); padding: 0 4px; }
+.msg.user .msg-label { color: rgba(0,180,216,0.5); }
+.bubble {
+  max-width: 88%; padding: 10px 14px;
+  border-radius: 14px; font-size: 14px; line-height: 1.55;
+  position: relative;
+}
+.msg.user .bubble { background: rgba(0,100,180,0.18); border: 1px solid rgba(0,119,182,0.35); border-bottom-right-radius: 4px; }
+.msg.nova .bubble { background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.12); border-bottom-left-radius: 4px; }
+
+.msg.nova .bubble code { background: rgba(0,229,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--cyan); }
+
+/* Action chips */
+.action-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.25);
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; color: var(--cyan); cursor: pointer;
+  transition: all 0.2s; text-decoration: none;
+  font-family: 'Orbitron', monospace; letter-spacing: 1px;
+}
+.chip:hover, .chip:active { background: rgba(0,229,255,0.18); }
+.chip.done { background: rgba(57,255,20,0.08); border-color: rgba(57,255,20,0.3); color: var(--green); }
+
+/* Typing indicator */
+.typing-indicator { display: flex; align-items: center; gap: 5px; padding: 10px 14px; background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.12); border-radius: 14px; border-bottom-left-radius: 4px; width: fit-content; }
+.typing-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); animation: td 1.2s ease infinite; }
+.typing-dot:nth-child(2){ animation-delay:.2s } .typing-dot:nth-child(3){ animation-delay:.4s }
+@keyframes td { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-6px);opacity:1} }
+
+/* Bottom controls */
+.controls { flex-shrink: 0; padding-top: 8px; border-top: 1px solid rgba(0,229,255,0.07); }
+
+.mic-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  font-family: 'Orbitron', monospace; font-size: 12px; letter-spacing: 2px;
+  cursor: pointer; transition: all 0.3s; text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(0,119,182,0.12));
+  border: 1px solid rgba(0,229,255,0.3); color: var(--cyan);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.mic-btn.active {
+  background: linear-gradient(135deg, rgba(57,255,20,0.1), rgba(0,80,0,0.12));
+  border-color: rgba(57,255,20,0.4); color: var(--green);
+  animation: mbpulse 1s ease infinite;
+}
+@keyframes mbpulse { 0%,100%{box-shadow:0 0 8px rgba(57,255,20,0.15)} 50%{box-shadow:0 0 22px rgba(57,255,20,0.35)} }
+
+.text-row { display: flex; gap: 8px; }
+.txt-input {
+  flex: 1; padding: 12px 14px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; color: var(--text); font-family: 'Exo 2', sans-serif;
+  font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.txt-input:focus { border-color: rgba(0,229,255,0.35); }
+.txt-input::placeholder { color: var(--muted); }
+.send-btn {
+  padding: 12px 16px; background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3); border-radius: 12px;
+  color: var(--cyan); cursor: pointer; font-size: 16px;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.send-btn:hover { background: rgba(0,229,255,0.2); }
+
+/* Quick suggestions */
+.quick-chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; flex-shrink: 0; }
+.quick-chips::-webkit-scrollbar { display: none; }
+.qchip {
+  flex-shrink: 0; padding: 5px 11px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; font-size: 11px; color: var(--muted);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.qchip:hover { background: rgba(0,229,255,0.07); border-color: rgba(0,229,255,0.2); color: var(--text); }
+
+/* API key banner */
+.api-banner {
+  background: rgba(255,214,10,0.04); border: 1px solid rgba(255,214,10,0.2);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;
+  font-size: 11px; color: rgba(255,214,10,0.7); line-height: 1.5; display: none;
+}
+.api-banner a { color: var(--amber); }
+.api-banner strong { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="scanline"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<!-- ══ SETUP SCREEN ══ -->
+<div id="setupScreen">
+  <h1>NOVA</h1>
+  <p>Your AI Smart Assistant<br>powered by <strong style="color:var(--cyan)">Claude AI</strong></p>
+
+  <div class="setup-field">
+    <label>ANTHROPIC API KEY</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="setup-hint">
+      Get your free API key from <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
+      Your key is stored locally on your device only. 🔒
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startApp()">⚡ LAUNCH NOVA</button>
+  <button class="skip-btn" onclick="startApp(true)">Use without AI (commands only)</button>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app" style="display:none">
+  <header>
+    <div class="logo">NOVA <small>AI ASSISTANT</small></div>
+    <div class="status-bar">
+      <div class="status-dot" id="dot"></div>
+      <span id="statusTxt">READY</span>
+      <button class="settings-btn" onclick="openSettings()">⚙</button>
+    </div>
+  </header>
+
+  <!-- Orb -->
+  <div class="orb-section">
+    <div class="orb-wrap" onclick="toggleListen()">
+      <div class="ring"></div><div class="ring"></div>
+      <div class="orb" id="orb">
+        <span class="orb-emoji" id="orbEmoji">🤖</span>
+        <div class="wave" id="wave">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        </div>
+      </div>
+    </div>
+    <div class="live-transcript" id="liveTranscript">Tap orb to speak</div>
+  </div>
+
+  <div class="api-banner" id="apiBanner">
+    ⚠️ <strong>No API key.</strong> AI answers disabled. Commands like open/call still work.
+    <a href="#" onclick="openSettings()">Add API key →</a>
+  </div>
+
+  <!-- Quick chips -->
+  <div class="quick-chips" id="quickChips">
+    <div class="qchip" onclick="run('What can you do?')">💡 Help</div>
+    <div class="qchip" onclick="run('What time is it?')">🕐 Time</div>
+    <div class="qchip" onclick="run('Open YouTube')">▶️ YouTube</div>
+    <div class="qchip" onclick="run('Call someone')">📞 Call</div>
+    <div class="qchip" onclick="run('Search for latest news')">📰 News</div>
+    <div class="qchip" onclick="run('Open WhatsApp')">💬 WhatsApp</div>
+    <div class="qchip" onclick="run('Weather in Riyadh')">⛅ Weather</div>
+    <div class="qchip" onclick="run('Open Google Maps')">🗺️ Maps</div>
+    <div class="qchip" onclick="run('Translate hello to Arabic')">🌍 Translate</div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat" id="chat"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="mic-btn" id="micBtn" onclick="toggleListen()">🎙️ &nbsp;TAP TO SPEAK</button>
+    <div class="text-row">
+      <input class="txt-input" id="txtIn" type="text" placeholder="Type anything or ask AI..." onkeydown="if(event.key==='Enter')sendTxt()">
+      <button class="send-btn" onclick="sendTxt()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let apiKey = '';
+let useAI = false;
+let recognition = null;
+let isListening = false;
+let isSpeaking = false;
+let conversation = []; // Claude AI conversation history
+const synth = window.speechSynthesis;
+
+// ════════════════════════════════
+// SETUP
+// ════════════════════════════════
+(function init() {
+  const saved = localStorage.getItem('nova_api_key');
+  if (saved) { document.getElementById('apiKeyInput').value = saved; }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+
+function startApp(skipAI = false) {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!skipAI && key) {
+    apiKey = key;
+    useAI = true;
+    localStorage.setItem('nova_api_key', key);
+  }
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  if (!useAI) document.getElementById('apiBanner').style.display = 'block';
+  initSpeech();
+  greet();
+}
+
+function openSettings() {
+  const newKey = prompt('Enter your Anthropic API key (get from console.anthropic.com):', apiKey);
+  if (newKey !== null) {
+    apiKey = newKey.trim();
+    useAI = !!apiKey;
+    if (apiKey) localStorage.setItem('nova_api_key', apiKey);
+    document.getElementById('apiBanner').style.display = useAI ? 'none' : 'block';
+    addMsg('nova', useAI ? '✅ API key saved. Full AI mode activated!' : '⚠️ No API key. Running in command-only mode.');
+  }
+}
+
+// ════════════════════════════════
+// SPEECH RECOGNITION
+// ════════════════════════════════
+function initSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => setStatus('listening');
+  recognition.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      (e.results[i].isFinal ? final : interim) && (e.results[i].isFinal ? final += e.results[i][0].transcript : interim += e.results[i][0].transcript);
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('liveTranscript').textContent = (final || interim).toLowerCase();
+    if (final.trim()) processInput(final.trim());
+  };
+  recognition.onerror = () => stopListen();
+  recognition.onend = () => stopListen();
+}
+
+function toggleListen() {
+  if (isListening) stopListen(); else startListen();
+}
+function startListen() {
+  if (!recognition) { addMsg('nova', '⚠️ Voice not supported in this browser. Please type instead or use Chrome/Edge.'); return; }
+  if (isSpeaking) synth.cancel();
+  isListening = true;
+  recognition.start();
+  document.getElementById('micBtn').className = 'mic-btn active';
+  document.getElementById('micBtn').innerHTML = '🔴 &nbsp;LISTENING — TAP TO STOP';
+}
+function stopListen() {
+  isListening = false;
+  if (recognition) { try { recognition.stop(); } catch(e){} }
+  setStatus('idle');
+  document.getElementById('micBtn').className = 'mic-btn';
+  document.getElementById('micBtn').innerHTML = '🎙️ &nbsp;TAP TO SPEAK';
+}
+
+// ════════════════════════════════
+// STATUS
+// ════════════════════════════════
+const STATES = {
+  idle:      { dot:'',          txt:'READY',      emoji:'🤖', wave:false },
+  listening: { dot:'listening', txt:'LISTENING',  emoji:'',   wave:true  },
+  thinking:  { dot:'thinking',  txt:'THINKING',   emoji:'⚙️', wave:false },
+  speaking:  { dot:'speaking',  txt:'SPEAKING',   emoji:'🔊', wave:false }
+};
+function setStatus(s) {
+  const st = STATES[s] || STATES.idle;
+  const orb = document.getElementById('orb');
+  const emoji = document.getElementById('orbEmoji');
+  const wave = document.getElementById('wave');
+  document.getElementById('dot').className = 'status-dot ' + st.dot;
+  document.getElementById('statusTxt').textContent = st.txt;
+  orb.className = 'orb ' + s;
+  emoji.textContent = st.emoji;
+  emoji.style.display = st.wave ? 'none' : 'flex';
+  wave.className = st.wave ? 'wave on' : 'wave';
+}
+
+// ════════════════════════════════
+// GREETING
+// ════════════════════════════════
+function greet() {
+  const hour = new Date().getHours();
+  const g = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const msg = useAI
+    ? `${g}! I'm **NOVA**, your AI assistant powered by Claude. I can answer any question, have full conversations, open apps, make calls, search the web, and much more. What can I do for you?`
+    : `${g}! I'm **NOVA**. I can open apps, make calls, and search the web. Add an API key for full AI conversations.`;
+  addMsg('nova', msg);
+  speak(msg.replace(/\*\*/g, ''));
+}
+
+// ════════════════════════════════
+// MAIN PROCESSOR
+// ════════════════════════════════
+async function processInput(text) {
+  setStatus('thinking');
+  addMsg('user', text);
+  document.getElementById('liveTranscript').textContent = '';
+
+  // 1. Check for device commands first (always work, no AI needed)
+  const cmd = detectCommand(text);
+  if (cmd) {
+    const res = executeCommand(cmd, text);
+    addMsg('nova', res.text, res.chips);
+    speak(res.speak);
+    return;
+  }
+
+  // 2. Use Claude AI for everything else
+  if (useAI) {
+    await askClaude(text);
+  } else {
+    const fallback = basicFallback(text);
+    addMsg('nova', fallback.text, fallback.chips);
+    speak(fallback.speak);
+  }
+}
+
+function run(text) { processInput(text); }
+function sendTxt() {
+  const el = document.getElementById('txtIn');
+  const v = el.value.trim();
+  if (!v) return;
+  el.value = '';
+  processInput(v);
+}
+
+// ════════════════════════════════
+// CLAUDE AI
+// ════════════════════════════════
+async function askClaude(userMsg) {
+  // Add to conversation history
+  conversation.push({ role: 'user', content: userMsg });
+
+  // Show typing
+  const typingId = showTyping();
+  setStatus('thinking');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `You are NOVA, a smart AI voice assistant embedded in a mobile app. Be helpful, concise, and conversational.
+When the user asks a question, answer it directly and clearly.
+Keep responses reasonably short for voice output (2-4 sentences when possible unless detail is needed).
+If asked to do device actions like opening apps or calling — say you'll do it and the app will handle it.
+Current date/time: ${new Date().toLocaleString()}.
+You can help with: answering questions, explaining things, calculations, translations, creative writing, coding, advice, and anything else.`,
+        messages: conversation.slice(-12) // Keep last 12 exchanges for context
+      })
+    });
+
+    removeTyping(typingId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.content[0]?.text || 'Sorry, I got no response.';
+
+    // Add assistant reply to history
+    conversation.push({ role: 'assistant', content: reply });
+
+    addMsg('nova', reply);
+    speak(reply);
+
+  } catch (err) {
+    removeTyping(typingId);
+    console.error(err);
+    let errMsg = '⚠️ AI Error: ' + err.message;
+    if (err.message.includes('401') || err.message.includes('authentication')) {
+      errMsg = '🔑 Invalid API key. Tap ⚙ to update it.';
+    } else if (err.message.includes('429')) {
+      errMsg = '⏱️ Too many requests. Please wait a moment.';
+    } else if (err.message.includes('Failed to fetch')) {
+      errMsg = '📡 No internet connection. Check your network.';
+    }
+    addMsg('nova', errMsg);
+    speak('Sorry, there was an error with the AI. Please check your API key.');
+    setStatus('idle');
+  }
+}
+
+// ════════════════════════════════
+// COMMAND DETECTION (No AI needed)
+// ════════════════════════════════
+function detectCommand(t) {
+  t = t.toLowerCase();
+  if (/^(call|dial|phone)\s/.test(t)) return 'call';
+  if (/^open\s/.test(t)) return 'open';
+  if (/\b(go to|visit|navigate to)\s/.test(t)) return 'goto';
+  if (/^(play|listen to)\s/.test(t)) return 'play';
+  if (/^search\s(for\s)?/.test(t) || /^find\s/.test(t)) return 'search';
+  if (/\bweather\b/.test(t) && (/\bin\s/.test(t) || t === 'weather')) return 'weather';
+  if (/^(what time|what's the time|current time)/.test(t)) return 'time';
+  if (/^(what('s)? the date|what day|today's date)/.test(t)) return 'date';
+  return null;
+}
+
+const APP_URLS = {
+  youtube:'https://www.youtube.com', whatsapp:'https://web.whatsapp.com',
+  instagram:'https://www.instagram.com', twitter:'https://twitter.com',
+  facebook:'https://www.facebook.com', tiktok:'https://www.tiktok.com',
+  telegram:'https://web.telegram.org', gmail:'https://mail.google.com',
+  google:'https://www.google.com', maps:'https://maps.google.com',
+  'google maps':'https://maps.google.com', netflix:'https://www.netflix.com',
+  spotify:'https://open.spotify.com', amazon:'https://www.amazon.com',
+  github:'https://github.com', reddit:'https://www.reddit.com',
+  linkedin:'https://www.linkedin.com', translate:'https://translate.google.com',
+  drive:'https://drive.google.com', snapchat:'https://www.snapchat.com',
+  x:'https://x.com', news:'https://news.google.com', twitch:'https://twitch.tv',
+  pinterest:'https://pinterest.com',
+};
+
+function executeCommand(cmd, raw) {
+  const t = raw.toLowerCase();
+
+  if (cmd === 'time') {
+    const s = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    return { text:`⏰ It's **${s}**`, speak:`The time is ${s}` };
+  }
+
+  if (cmd === 'date') {
+    const s = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    return { text:`📅 Today is **${s}**`, speak:`Today is ${s}` };
+  }
+
+  if (cmd === 'call') {
+    const target = raw.replace(/^(call|dial|phone)\s+/i,'').trim();
+    const digits = target.replace(/\D/g,'');
+    const url = `tel:${digits || target}`;
+    return { text:`📞 Calling **${target}**`, speak:`Calling ${target}`, chips:[{label:'📞 Dial Now', url, auto:true}] };
+  }
+
+  if (cmd === 'open') {
+    const name = t.replace(/^open\s+/,'').trim();
+    for (const [k,v] of Object.entries(APP_URLS)) {
+      if (name.includes(k)) return { text:`✅ Opening **${k}**`, speak:`Opening ${k}`, chips:[{label:`🌐 Open ${k}`, url:v, auto:true}] };
+    }
+    if (name.includes('.')) {
+      const url = name.startsWith('http') ? name : 'https://'+name;
+      return { text:`🌐 Opening **${name}**`, speak:`Opening ${name}`, chips:[{label:'🌐 Open', url, auto:true}] };
+    }
+    return null; // Let AI handle unknown app
+  }
+
+  if (cmd === 'goto') {
+    const m = t.match(/(?:go to|visit|navigate to)\s+(.+)/);
+    let site = m ? m[1].trim().replace(/ /g,'') : '';
+    if (!site.startsWith('http')) site = 'https://'+site;
+    return { text:`🌐 Going to **${site}**`, speak:`Going there now`, chips:[{label:'🌐 Open', url:site, auto:true}] };
+  }
+
+  if (cmd === 'play') {
+    const m = raw.match(/(?:play|listen to)\s+(.+?)(?:\s+on\s+(.+))?$/i);
+    const query = m ? m[1] : raw;
+    const plat = m && m[2] ? m[2].toLowerCase() : 'youtube';
+    const url = plat.includes('spotify')
+      ? `https://open.spotify.com/search/${encodeURIComponent(query)}`
+      : `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    return { text:`🎵 Playing **${query}**`, speak:`Playing ${query}`, chips:[{label:'▶️ Play Now', url, auto:true}] };
+  }
+
+  if (cmd === 'search') {
+    const m = raw.match(/(?:search\s+(?:for\s+)?|find\s+)(.+?)(?:\s+on\s+(.+))?$/i);
+    const query = m ? m[1] : raw;
+    const site = m && m[2] ? m[2].toLowerCase() : null;
+    let url;
+    if (site?.includes('youtube')) url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    else if (site?.includes('amazon')) url = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
+    else url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    return { text:`🔍 Searching for **"${query}"**`, speak:`Searching for ${query}`, chips:[{label:'🔍 Results', url, auto:true}] };
+  }
+
+  if (cmd === 'weather') {
+    const m = t.match(/weather\s+(?:in\s+)?(.+)/);
+    const city = m ? m[1].trim() : '';
+    const url = `https://www.google.com/search?q=weather${city?'+'+encodeURIComponent(city):''}`;
+    return { text:`⛅ Checking weather${city?' in **'+city+'**':''}`, speak:`Getting weather${city?' for '+city:''}`, chips:[{label:'⛅ See Weather', url, auto:true}] };
+  }
+
+  return null;
+}
+
+function basicFallback(text) {
+  const url = `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+  return { text:`🔍 Searching Google for: **"${text}"**\n\n_Add an API key for AI answers._`, speak:`Searching for ${text}`, chips:[{label:'🔍 Google', url, auto:false}] };
+}
+
+// ════════════════════════════════
+// SPEECH SYNTHESIS
+// ════════════════════════════════
+function speak(text) {
+  if (!synth) { setStatus('idle'); return; }
+  synth.cancel();
+  const clean = text.replace(/\*\*/g,'').replace(/\n/g,' ').replace(/[^\w\s.,!?'-]/g,' ').substring(0, 400);
+  const utt = new SpeechSynthesisUtterance(clean);
+  utt.rate = 1.08; utt.pitch = 1; utt.volume = 1;
+  const voices = synth.getVoices();
+  const v = voices.find(v=>v.name.includes('Google')&&v.lang.startsWith('en')) ||
+            voices.find(v=>v.lang.startsWith('en-US')) || voices[0];
+  if (v) utt.voice = v;
+  utt.onstart = () => { isSpeaking = true; setStatus('speaking'); };
+  utt.onend = utt.onerror = () => { isSpeaking = false; setStatus('idle'); };
+  synth.speak(utt);
+}
+
+// ════════════════════════════════
+// CHAT UI
+// ════════════════════════════════
+function addMsg(role, text, chips) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+
+  // Format text: **bold**, newlines
+  const formatted = text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+
+  let chipsHtml = '';
+  if (chips && chips.length) {
+    chips.forEach(c => {
+      if (c.auto) setTimeout(() => window.open(c.url, '_blank'), 600);
+      chipsHtml += `<a class="chip" href="${c.url}" target="_blank">${c.label} ↗</a>`;
+    });
+    chipsHtml = `<div class="action-row">${chipsHtml}</div>`;
+  }
+
+  div.innerHTML = `<div class="msg-label">${role==='user'?'YOU':'NOVA AI'}</div><div class="bubble">${formatted}${chipsHtml}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+let typingCounter = 0;
+function showTyping() {
+  const id = 'typing-' + (++typingCounter);
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg nova'; div.id = id;
+  div.innerHTML = `<div class="msg-label">NOVA AI</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return id;
+}
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// voices may load late
+synth.onvoiceschanged = () => {};
+
+// Check URL params (shortcut from home screen)
+if (new URLSearchParams(location.search).get('action') === 'listen') {
+  window.addEventListener('load', () => setTimeout(startListen, 1000));
+}
+</script>
+</body>
+</html>.setup-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: left; line-height: 1.5; }
 .setup-hint a { color: var(--cyan); }
 .start-btn {
   width: 100%; padding: 16px;
